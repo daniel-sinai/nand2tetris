@@ -1,0 +1,211 @@
+// This file is part of nand2tetris, as taught in The Hebrew University, and
+// was written by Aviv Yaish. It is an extension to the specifications given
+// [here](https://www.nand2tetris.org) (Shimon Schocken and Noam Nisan, 2017),
+// as allowed by the Creative Common Attribution-NonCommercial-ShareAlike 3.0
+// Unported [License](https://creativecommons.org/licenses/by-nc-sa/3.0/).
+
+/**
+ * A library of commonly used mathematical functions.
+ * Note: Jack compilers implement multiplication and division using OS method calls.
+ */
+class Math {
+
+        static Array twoToThe;
+        static int div_2qy;
+
+        /** Initializes the library. */
+        function void init() {
+            var int i, pow;
+            let twoToThe = Array.new(16);
+            let twoToThe[0] = 1;
+            let twoToThe[1] = 2;
+            let twoToThe[2] = 4;
+            let twoToThe[3] = 8;
+            let twoToThe[4] = 16;
+            let twoToThe[5] = 32;
+            let twoToThe[6] = 64;
+            let twoToThe[7] = 128;
+            let twoToThe[8] = 256;
+            let twoToThe[9] = 512;
+            let twoToThe[10] = 1024;
+            let twoToThe[11] = 2048;
+            let twoToThe[12] = 4096;
+            let twoToThe[13] = 8192;
+            let twoToThe[14] = 16384;
+            let twoToThe[15] = 32767+1;
+            return;
+        }
+
+        /** Returns the absolute value of x. */
+        function int abs(int x) {
+            if (x < 0) { 
+                return -x;
+            }
+            return x;
+        }
+
+        /** 
+         * Returns the product of x and y. 
+         * When a Jack compiler detects the multiplication operator '*' in the 
+         * program's code, it handles it by invoking this method. In other words,
+         * the Jack expressions x*y and multiply(x,y) return the same value.
+         */
+        // Pseudocode:
+        // 1. let sum = 0
+        // 2. let shiftedx = x
+        // 3. for i = 0 ... n-1 do
+        // 4.   if ((i-th bit of y) == 1)
+        // 5.      let sum = sum + shiftedx
+        // 6.   let shiftedx = 2*shiftedx
+        // 7. return sum
+        function int multiply(int x, int y) {
+            var int sum, shiftedx, i;
+            let sum = 0;
+            let shiftedx = x;
+            let i = 0;
+            while (i < 16) {
+                if (Math.bit(y, i)) {
+                    let sum = sum + shiftedx;
+                }
+                let shiftedx = shiftedx + shiftedx;
+                let i = i + 1;
+            }
+            return sum;
+        }
+
+        /** 
+         * Returns the integer part of x/y.
+         * When a Jack compiler detects the multiplication operator '/' in the 
+         * program's code, it handles it by invoking this method. In other words,
+         * the Jack expressions x/y and divide(x,y) return the same value.
+         */
+        // This should be implemented without using multiplication.
+        // Hint: updating the value of 2*q*y in the "if" statement requires
+        // at most a single addition operator at every recursion step.
+        // Pseudocode:
+        // 1. if (y > x) return 0
+        // 2. let q = divide(x, 2*y)
+        // 3. if ((x - 2*q*y) < y)
+        // 4.   return 2*q
+        // 5. else
+        // 6.   return 2*q + 1~
+        function int divide(int x, int y) {
+            var int result;
+            let result = Math.divide_pos(Math.abs(x), Math.abs(y));
+            if (x < 0) {
+                let result = -result;
+            }
+            if (y < 0) {
+                let result = - result;
+            }
+            return result;
+        }
+
+        function int divide_pos (int x, int y) {
+            var int q;
+            if ((y > x + y < 0) < 0) {
+                let div_2qy = 0;
+                return 0;
+            }
+            let q = Math.divide_pos(x, y + y);
+            if ((x - div_2qy) < y) {
+                return q + q;
+            }
+            else {
+                let div_2qy = div_2qy + y;
+                return q + q + 1;
+            }
+        }
+
+        /** Returns the integer part of the square root of x. */
+        // This should be implemented without using multiplication or division.
+        // Pseudocode (where '**' is the mathematical power function):
+        // 1. let y = 0
+        // 2. for j = (n/2 - 1) ... 0 do
+        // 3.   if ((y + 2**j)**2 <= x) then let y = y + 2**j
+        // 4. return y
+        function int sqrt(int x) {
+            var int i, y, calc, power2;
+            let y = 0;
+            let power2 = 0;
+            let i = 7;
+            while (~(i < 0)) {
+                let calc = Math.pow_2_bits(y + twoToThe[i]) - x;
+                if (~(calc > 0)) {
+                    let y = y + twoToThe[i];
+                }
+                let i = i - 1;
+            }
+            return y;
+        }
+
+        /** Returns the greater number. */
+        function int max(int a, int b) {
+            if (b > a) {
+                return b;
+            }
+            return a;
+        }
+
+        /** Returns the smaller number. */
+        function int min(int a, int b) {
+            if (b < a) {
+                return b;
+            }
+            return a;
+        }
+
+        /** Return true if the i'th bit of x is 1, false otherwise */
+        function boolean bit(int x, int i) {
+            var int and_both;
+            let and_both = twoToThe[i] & x;
+            if (and_both = 0) {
+                return false;
+            }
+            return true;
+        }
+
+        /** Return true if the i'th bit of x is 1, false otherwise */
+        function int pow(int x, int pow) {
+            var int i, result;
+            let i = 0;
+            let result = 1;
+            while (i < pow) {
+                let result = result * x;
+                let i = i + 1;
+            }
+            return result;
+        }
+
+        /** the functions return the result of powering a number by 2 without using multiply operator*/
+        function int pow_2_bits(int x) {
+            var int i, powed;
+            let i = 0;
+            let powed = 0;
+            while (i < 16) {
+                if (Math.bit(x, i)) {
+                    let powed = powed + Math.shift_times(x, i, 0);
+                }
+                let i = i + 1;
+            }
+            return powed;
+        }
+
+        /** the function shift a number to the left n times
+        if flag = 0, - shift left, if flag = 1  - shift right
+        */
+        function int shift_times(int x, int n, int flag) {
+            var int i;
+            let i = 0;
+            while (i < n) {
+                if (flag = 0) {
+                    let x = ^x;
+                }
+                else {
+                    let x = #x;
+                }
+                let i = i + 1;
+            }
+            return x;
+        }
+}
