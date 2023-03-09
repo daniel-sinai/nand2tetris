@@ -1,0 +1,70 @@
+// This file is part of nand2tetris, as taught in The Hebrew University,
+// and was written by Aviv Yaish, and is published under the Creative 
+// Common Attribution-NonCommercial-ShareAlike 3.0 Unported License 
+// https://creativecommons.org/licenses/by-nc-sa/3.0/
+
+// This chip is an extension of the regular CPU that uses the extended ALU.
+// If instruction[15]==0 or (instruction[14]==1 and instruction[13]==1),
+// the CpuMul behaves exactly the same as the regular CPU.
+// If instruction[15]==1 and instruction[14]==0 the chip will behave as follows:
+//  Instruction  | 12 | 11 | 10 |
+// ______________________________
+// dest=D<<;jump | 0  | 1  | 1  |
+// dest=A<<;jump | 0  | 1  | 0  |
+// dest=M<<;jump | 1  | 1  | 0  |
+// dest=D>>;jump | 0  | 0  | 1  |
+// dest=A>>;jump | 0  | 0  | 0  |
+// dest=M>>;jump | 1  | 0  | 0  |
+
+CHIP CpuMul {
+    IN  inM[16],         // M value input  (M = contents of RAM[A])
+        instruction[16], // Instruction for execution
+        reset;           // Signals whether to re-start the current
+                         // program (reset=1) or continue executing
+                         // the current program (reset=0).
+    OUT outM[16],        // M value output
+        writeM,          // Write into M? 
+        addressM[15],    // Address in data memory (of M)
+        pc[15];          // address of next instruction
+    
+    PARTS:
+	
+	// Execute instruction
+	Not(in = instruction[15], out = ni);
+	Mux16(a = toADreg, b = instruction, sel = ni, out = firstMuxout);
+	
+	Or(a = instruction[5], b = ni, out = loadA);
+	ARegister(in = firstMuxout, load = loadA, out = A, out[0..14] = addressM);
+
+	
+	And(a = instruction[15], b = instruction[12], out = AorM);
+	Mux16(a = A, b = inM, sel = AorM, out = AM);
+	
+	// ExtendALU
+	ExtendAlu(x = D, y = AM, instruction[7..8] = instruction[14..15], instruction[0..6] = instruction[6..12], out = toADreg, out = outM, zr = zr, ng = ng);
+			  
+	And(a = instruction[15], b = instruction[4], out = loadD);
+	DRegister(in = toADreg, load = loadD, out = D);
+	
+	And(a = instruction[15], b = instruction[3], out = writeM);
+	
+	
+	// Choose the next instruction
+	And(a = zr, b = instruction[1], out = jeq);
+	
+	And(a = ng, b = instruction[2], out = jlt);
+	
+	Or(a = zr, b = ng, out = zeroOrnegative);
+	Not(in = zeroOrnegative, out = positive);
+	And(a = positive, b = instruction[0], out = jgt);
+	
+	Or(a = jlt, b = jeq, out = jle);
+	Or(a = jle, b = jgt, out = jumptoA);
+	
+	Not(in = ni, out = Cinstruction);
+	And(a = Cinstruction, b = jumptoA, out = PCload);
+	
+	Not(in = PCload, out = PCinc);
+	
+	PC(in = A, load = PCload, inc = PCinc, reset = reset, out[0..14] = pc);
+}
